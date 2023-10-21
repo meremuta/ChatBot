@@ -18,6 +18,10 @@ driver_config = ydb.DriverConfig(
     credentials=ydb.iam.MetadataUrlCredentials()
 )
 
+ani_dataset = os.getenv("ani_dataset")
+rate_dataset = os.getenv("rate_dataset")
+top_dataset = os.getenv("top_dataset")
+
 driver = ydb.Driver(driver_config)
 # Wait for the driver to become active for requests.
 driver.wait(fail_fast=True, timeout=5)
@@ -308,7 +312,7 @@ def rate_specific(chat_id, anime_id):
 
 def send_anime_for_rate(chat_id, username):
     top_anime = pd.read_csv(
-        f"https://storage.yandexcloud.net/module-task/anime_top.csv",
+        f"{top_dataset}",
         encoding="unicode_escape"
     )
     watched_ani = watched(username)
@@ -462,11 +466,11 @@ def get_prefs(user):
 
 def smart_filter(username):
     ratingdata = pd.read_csv(
-        f"https://storage.yandexcloud.net/module-task/rating_only.csv",
+        f"{rate_dataset}",
         encoding="unicode_escape"
     )
     all_data = pd.read_csv(
-        f"https://storage.yandexcloud.net/module-task/anime_only.csv",
+        f"{ani_dataset}",
         encoding="unicode_escape"
     )
     userdata = watched(username)
@@ -599,7 +603,6 @@ def smart_filter(username):
     if len(exclude) > 0:
         for excl in exclude:
             recom = recom[recom[excl] == 0]
-            recom3 = recom[recom[excl] == 0]
     else:
         recom = recom
 
