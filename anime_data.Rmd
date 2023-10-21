@@ -1,0 +1,132 @@
+---
+title: "project methods"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Загрузка библиотек:
+```{r}
+library(dplyr)
+library(stringr)
+library(readr)
+```
+
+
+Данные взяты по ссылке: https://www.kaggle.com/datasets/CooperUnion/anime-recommendations-database?resource=download
+
+Загрузка данных:
+```{r}
+rating <- read_csv("data/anime/rating.csv")
+anime <- read_csv("data/anime/anime.csv")
+```
+
+В этих данных огромное количество наблюдений. Число записей об оценках пользователей:
+```{r}
+nrow(rating)
+```
+Количество аниме:
+
+```{r}
+nrow(anime)
+```
+
+Выделим количество пользователей:
+```{r}
+unique_users = unique(rating$user_id)
+length(unique_users)
+```
+
+Пользователей в этих данных более 73 тысяч. Оставлю для дальнейшего анализа только 10000.
+
+```{r}
+sample_users = unique_users %>% sample(10000)
+```
+
+Оставлю записи только о выбранных пользователях
+
+```{r}
+sample_rating = rating %>% filter(user_id  %in% sample_users)
+nrow(sample_rating)
+```
+Соединю оценки и описание аниме:
+
+```{r}
+sample_anime = anime %>% inner_join(sample_rating, by="anime_id")
+```
+
+Выберу колонку с жанрами аниме:
+
+```{r}
+genres = sample_anime %>% select(genre, anime_id) %>% unique()
+genres
+```
+
+На данном этапе жанры написаны одной строкой через запятую, это не подходит для дальнейшего анализа. Данные необходимо преобразовать.
+
+```{r}
+library(tidytext)
+library(quanteda)
+
+# преобразую строку с жанрами в отдельные токены
+
+data <- genres %>% na.omit() %>% 
+    unnest_tokens(word, genre, token = 'regex', pattern=", ")  %>%
+    count(anime_id, word) %>%
+    cast_dfm(anime_id, word, n) %>% convert(to = "data.frame")
+
+# переименую колонку 
+data = rename (data, "anime_id" = doc_id)
+
+# переписываю данные в подходящий формат
+sample_anime$anime_id = as.character(sample_anime$anime_id)
+
+# соединяю информацию о жанрых с исходными данными
+sample_anime = sample_anime %>% inner_join(data, by = "anime_id")
+
+# убираю записи, в которых рейтинг -1, это значит что пользователь просмотрел, но не оценил аниме. Такие записи мне не нужны
+anime_final = sample_anime %>% select(-genre) %>% rename( "rating_total" = "rating.x", "rating_user" = "rating.y") %>% filter(rating_user != -1)
+```
+
+
+В итоге получились такие данные:
+```{r}
+anime_final
+```
+Количество наблюдений:
+```{r}
+nrow(anime_final)
+```
+Количество переменных:
+```{r}
+ncol(anime_final)
+```
+
+Записываю данные:
+
+```{r}
+#write.csv(anime_final, "anime_final_sysAn.csv")
+```
+
+
+```{r}
+anime_only = anime_final %>% select(-user_id, -members, -rating_user) %>% unique()
+```
+```{r}
+anime_top = anime_only %>% filter(rating_total>=8)
+```
+
+
+
+```{r}
+rating_only = anime_final %>% select(anime_id, user_id, rating_user)
+```
+
+
+```{r}
+#write.csv(rating_only, "rating_only.csv")
+```
+
+
