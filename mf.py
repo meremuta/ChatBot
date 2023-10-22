@@ -316,9 +316,12 @@ def send_anime_for_rate(chat_id, username):
         encoding="unicode_escape"
     )
     watched_ani = watched(username)
-    non_watched = top_anime[
-        ~top_anime["anime_id"].isin(list(watched_ani["animeid"].astype(int)))
-    ]
+    if watched_ani.empty:
+        non_watched = top_anime
+    else:
+        non_watched = top_anime[
+            ~top_anime["anime_id"].isin(list(watched_ani["animeid"].astype(int)))
+        ]
     random_anime = non_watched.sample(1)
     anime_name = random_anime.name.iloc[0]
     anime_id = random_anime.anime_id.iloc[0]
