@@ -430,7 +430,7 @@ def upsert_rating(tablename, user, anime_id, row_id, moment_now, rate_value):
 
 
 def rate_count(tablename, user):
-    text = f"SELECT COUNT(*) as r_count FROM {tablename} WHERE username == '{user}';"
+    text = f"SELECT COUNT(*) as r_count FROM {tablename} WHERE username == '{user}' AND rating > 0;"
     return pool.retry_operation_sync(lambda s: s.transaction().execute(
         text,
         commit_tx=True,
