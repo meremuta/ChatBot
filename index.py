@@ -6,17 +6,15 @@ import ydb
 import datetime
 from mf import *
 
-
 driver_config = ydb.DriverConfig(
     endpoint=os.getenv("YDB_ENDPOINT"),
     database=os.getenv("YDB_DATABASE"),
     credentials=ydb.iam.MetadataUrlCredentials()
 )
 
-
 ani_types = ["Movie", "TV", "OVA", "Special", "Music", "ONA", "All"]
 
-pref_list = ["genres", "exclude", "similarity", "strict", "totalrate",  "myrate", "othersrate", "type"]
+pref_list = ["genres", "exclude", "similarity", "strict", "totalrate", "myrate", "othersrate", "type"]
 
 genres = [
     "action",
@@ -64,8 +62,7 @@ genres = [
     "yaoi"
 ]
 
-
-rate_recom_answ = ["Don't know", "Good", "Bad"]
+rate_recom_answ = ["Dont know", "Good", "Bad"]
 
 driver = ydb.Driver(driver_config)
 # Wait for the driver to become active for requests.
@@ -75,7 +72,6 @@ pool = ydb.SessionPool(driver)
 
 
 def handler(event, context):
-
     try:
         message = json.loads(event["body"])
         if "callback_query" in message.keys():
@@ -87,7 +83,6 @@ def handler(event, context):
             reply = message["message"]["text"]
             username = message["message"]["chat"]["username"]
             upsert_myusers(username, chat_id)
-
 
         if "callback_query" in message.keys():
             if reply in ani_types:
@@ -137,8 +132,13 @@ def handler(event, context):
             send_message("Чем займемся дальше?", chat_id)
         elif reply.startswith("/rate"):
             if len(reply.split(" ")) == 2:
-                anime_id = reply.split(" ")[1]
-                rate_specific(chat_id, anime_id)
+                if reply == "/rate count":
+                    counts = rate_count("animerate", username)[0].rows[0]["r_count"]
+                    send_message(counts, chat_id)
+                else:
+                    anime_id = reply.split(" ")[1]
+                    send_message("Если аниме с таким ID нет, то по ссылке будет страница с ошибкой.", chat_id)
+                    rate_specific(chat_id, anime_id)
             elif reply == "/rate":
                 send_anime_for_rate(chat_id, username)
             else:
@@ -146,10 +146,6 @@ def handler(event, context):
                     "Что-то пошло не так. Для оценки рандомных аниме напишите просто /rate, для оценки конкретного аниме напишите /rate id, где id - это идентификатор аниме",
                     chat_id
                 )
-
-        elif reply == "/rate count":
-            counts = rate_count("animerate", username)[0].rows[0]["r_count"]
-            send_message(counts, chat_id)
 
         elif reply == "/quote":
             anime, character, quote = get_quote()
@@ -285,9 +281,12 @@ def handler(event, context):
             prefs = get_prefs(username)
             if prefs.empty:
                 answ = "У вас еще нет предпочтений."
+                send_message(answ, chat_id)
+                print({answ})
             else:
                 answ = report_prefs(prefs)
                 send_message(answ, chat_id)
+                print({answ})
 
         elif reply == "/recommend":
             watched_ani = watched(username)
@@ -302,6 +301,8 @@ def handler(event, context):
                     recom_data = smart_filter(username=username)
                     if recom_data.empty:
                         answ = "Не могу подобрать вам рекомендацию. Попробуйте поменять предпочтения."
+                        send_message(answ, chat_id)
+                        print({answ})
                     else:
                         recom_raw = recom_data.sample(1)
                         name = recom_raw.iloc[0]["name"]
@@ -320,6 +321,7 @@ def handler(event, context):
 """
                         send_message(answ, chat_id)
                         send_question_recomrate(chat_id)
+                        print({answ})
                 else:
 
                     send_message(
@@ -329,6 +331,8 @@ def handler(event, context):
                     recom_data = smart_filter(username=username)
                     if recom_data.empty:
                         answ = "Не могу подобрать вам рекомендацию. Попробуйте поменять предпочтения."
+                        send_message(answ, chat_id)
+                        print({answ})
                     else:
                         recom_raw = recom_data.sample(1)
                         name = recom_raw.iloc[0]["name"]
@@ -348,6 +352,7 @@ def handler(event, context):
 
                         send_message(answ, chat_id)
                         send_question_recomrate(chat_id)
+                        print({answ})
             else:
                 if user_prefs.empty:
                     send_message(
@@ -366,6 +371,7 @@ def handler(event, context):
                     if recom_data.empty:
                         answ = "Не могу подобрать вам рекомендацию. Попробуйте поменять предпочтения."
                         send_message(answ, chat_id)
+                        print({answ})
                     else:
                         recom_raw = recom_data.sample(1)
                         name = recom_raw.iloc[0]["name"]
@@ -385,6 +391,7 @@ def handler(event, context):
 
                         send_message(answ, chat_id)
                         send_question_recomrate(chat_id)
+                        print({answ})
                 else:
                     send_message(
                         "Рекомендация будет построена с учетом предпочтений и ваших оценок аниме.",
@@ -394,6 +401,8 @@ def handler(event, context):
                     recom_data = smart_filter(username=username)
                     if recom_data.empty:
                         answ = "Не могу подобрать вам рекомендацию. Попробуйте поменять предпочтения."
+                        send_message(answ, chat_id)
+                        print({answ})
                     else:
                         recom_raw = recom_data.sample(1)
                         name = recom_raw.iloc[0]["name"]
@@ -414,6 +423,7 @@ def handler(event, context):
 
                     send_message(answ, chat_id)
                     send_question_recomrate(chat_id)
+                    print({answ})
 
         elif reply == "/commands":
             answ = """/get preferences – Получить сохраненные предпочтения \n
@@ -495,22 +505,27 @@ def handler(event, context):
 С моей помощью ты можешь оценить просмотренные и рандомные аниме, установить свои предпочтения (а также посмотреть и поменять их), и получить рекомендацию аниме на основе того, что уже было просмотрено и оценено, и твоих сохраненных предпочтений. А еще я могу скинуть тебе рандомную аниме-цитатку! И если меня не остановить, я буду присылать тебе цитатку дня каждый день!\n
 Весь список команд можно узнать, набрав /commands . """
             send_message(answ, chat_id)
+            print({answ})
         else:
             anime, character, quote = get_quote()
             answ = f"В аниме {anime} персонажем {character} было сказано: \n{quote}"
             send_message(answ, chat_id)
+            print({answ})
     except:
         message = json.loads(json.dumps(event))
-        text = message['messages'][0]['details']['payload']
-        myusers = get_users()
-        for user in range(len(myusers)):
-            try:
-                chat_id = int(myusers.chat_id[user])
-                anime, character, quote = get_quote()
-                answ = text +"\n" + f"В аниме {anime} персонажем {character} было сказано: \n{quote}"
-                send_message(answ, chat_id)
-            except:
-                pass
+        try:
+            text = message['messages'][0]['details']['payload']
+            myusers = get_users()
+            for user in range(len(myusers)):
+                try:
+                    chat_id = int(myusers.chat_id[user])
+                    anime, character, quote = get_quote()
+                    answ = text + "\n" + f"В аниме {anime} персонажем {character} было сказано: \n{quote}"
+                    send_message(answ, chat_id)
+                except:
+                    pass
+        except:
+            pass
 
     print(json.dumps(event))
     return {"statusCode": 200}
