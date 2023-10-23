@@ -30,10 +30,15 @@ pool = ydb.SessionPool(driver)
 
 
 def get_quote():
-    resp = requests.get("https://animechan.xyz/api/random")
-    anime = resp.json()["anime"]
-    character = resp.json()["character"]
-    quote = resp.json()["quote"]
+    try:
+        resp = requests.get("https://animechan.xyz/api/random")
+        anime = resp.json()["anime"]
+        character = resp.json()["character"]
+        quote = resp.json()["quote"]
+    except:
+        anime = "... вообще-то не в аниме"
+        character = "(предположительно) Оноре де Бальзак"
+        quote = "Всё приходит в своё время для тех, кто умеет ждать (на данный момент API выдает ошибку вместо цитатки, подождем)"
     return anime, character, quote
 
 
