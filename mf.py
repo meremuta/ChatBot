@@ -31,7 +31,7 @@ pool = ydb.SessionPool(driver)
 
 def get_quote():
     try:
-        resp = requests.get("https://animechan.xyz/api/random")
+        resp = requests.get("https://animechan.xyz/api/random", timeout = 10)
         anime = resp.json()["anime"]
         character = resp.json()["character"]
         quote = resp.json()["quote"]
